@@ -24,6 +24,7 @@ def getID(url):
         if pth:
             return pth[-1]
     else:
-        with yt_dlp.YoutubeDL() as ydl:
+        ydl_opts = {"extract_flat": True, "skip_download": True}
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             videoID = ydl.extract_info(f"ytsearch:{url}", download=False)['entries'][0]["id"]
             return videoID

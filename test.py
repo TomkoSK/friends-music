@@ -12,7 +12,7 @@ def getID(url):
         return pth[-1]
 
 print(getID(arg))
-ydl_opts = {"outtmpl" : f"./audio/TESTING.mp3", "format" : "ba"}
+ydl_opts = {'extract_flat': True, 'skip_download': True}
 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     video = ydl.extract_info(f"ytsearch:{arg}", download=False)['entries'][0]["id"]
 print(video)
