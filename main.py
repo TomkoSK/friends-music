@@ -32,15 +32,19 @@ def playMusic():#TODO: BOT GETS THE LAST SONG OF THE QUEUE STUCK AS CURRENT PLAY
             if(vcClient and not vcClient.is_playing() and len(songQueue) > 0):
                 if(not vcClient.is_connected()):
                     continue
-                if(os.path.isfile(f"./audio/{videosDict[songQueue[0]][0]}.mp3")):
+                if(shuffle):
+                    nextSong = random.choice(songQueue)
+                else:
+                    nextSong = songQueue[0]
+                if(os.path.isfile(f"./audio/{videosDict[nextSong][0]}.mp3")):
                     vcClient.play(discord.FFmpegPCMAudio(source=f"./audio/{videosDict[songQueue[0]][0]}.mp3"))
                 else:
-                    if(songQueue[0] in downloadQueue):
+                    if(nextSong in downloadQueue):
                         continue
                     else:
-                        print(f"[ERROR] COULD NOT PLAY SONG {songQueue[0][1]}")
-                currentSong = songQueue[0]
-                songQueue = songQueue[1:]
+                        print(f"[ERROR] COULD NOT PLAY SONG {nextSong[1]}")
+                currentSong = nextSong
+                songQueue.remove(nextSong)
             elif(vcClient and not vcClient.is_playing() and len (songQueue) == 0):
                 if(not vcClient.is_connected()):
                     continue
@@ -163,4 +167,4 @@ def downloadVideo(url, filename):
     fileName = yt_utils.download(url, filename)
     downloadQueue.remove(videoID)
 
-bot.run("BOT-TOKEN")
+bot.run("TOKEN")
