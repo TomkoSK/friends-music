@@ -6,6 +6,7 @@ import threading
 import string
 import random
 import os.path
+import time
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -22,6 +23,7 @@ shuffle = False
 def playMusic():#TODO: BOT GETS THE LAST SONG OF THE QUEUE STUCK AS CURRENT PLAYING
     global songQueue, vcClient, currentSong
     while True:
+        time.sleep(0.1)
         if(vcClient):
             if(not vcClient.is_connected()):
                 vcClient.cleanup()
@@ -58,18 +60,18 @@ with open("videos.json", "r") as file:
 
 @bot.command()
 async def test(ctx, *args):
-    await ctx.reply(" ".join(args))
+    await ctx.channel.send(" ".join(args))
 
 """
 @bot.command()
 async def download(ctx, url):
     videoID = yt_utils.getID(url)
     if(videoID in downloadQueue):
-        await ctx.reply("Currently downloading this")
+        await ctx.channel.send("Currently downloading this")
     elif(videoID in videosDict):
-        await ctx.reply("This is already downloaded")
+        await ctx.channel.send("This is already downloaded")
     else:
-        await ctx.reply("alr downloading")
+        await ctx.channel.send("alr downloading")
         thread = threading.Thread(target=downloadVideo, args=[url], daemon=True)
         thread.start()
 """
@@ -82,7 +84,7 @@ async def play(ctx, *args):
     if(not url.startswith("https://")):#if user didnt put in URL, it gets made from the video ID
         url = f"https://www.youtube.com/watch?v={videoID}"
     if(not vcClient and not ctx.author.voice):
-        await ctx.reply("You aren't in a VC")
+        await ctx.channel.send("You aren't in a VC")
     if(not(videoID in videosDict or videoID in downloadQueue)):
         videosDict[videoID] = []
         filename = ''.join(random.choices(string.ascii_letters, k=12))
@@ -95,11 +97,11 @@ async def play(ctx, *args):
         thread.start()
     if(vcClient):
         songQueue.append(videoID)
-        await ctx.reply(f"Added **{videosDict[videoID][1]}** to queue")
+        await ctx.channel.send(f"Added **{videosDict[videoID][1]}** to queue")
     elif(ctx.author.voice):
         vcClient = await ctx.author.voice.channel.connect()
         songQueue.append(videoID)
-        await ctx.reply(f"Added **{videosDict[videoID][1]}** to queue")
+        await ctx.channel.send(f"Added **{videosDict[videoID][1]}** to queue")
 
 @bot.command()
 async def q(ctx):
@@ -118,12 +120,32 @@ async def q(ctx):
         url = videosDict[song][2]
         answerString += f"[{title}](<{url}>)\n"
     if(not currentSong and len(songQueue) == 0):
-        await ctx.reply("queue currently empty")
+        await ctx.channel.send("queue currently empty")
     elif(currentSong and len(songQueue) == 0):
         answerString += "*None*"
-        await ctx.reply(answerString)
+        await ctx.channel.send(answerString)
     else:
-        await ctx.reply(answerString)
+        await ctx.channel.send(answerString)
+
+@bot.command()
+async def message(ctx, *args):
+    message = " ".join(args)
+    await ctx.message.delete()
+    await ctx.channel.send(message)
+
+@bot.command()
+async def remove(ctx, songPlace):
+    global songQueue
+    index = -1
+    try:
+        index = int(songPlace)
+    except:
+        await ctx.channel.send("Invalid song number to remove")
+        return
+    if(index < 1 or index > len(songQueue)):
+        await ctx.channel.send("Invalid song number to remove")
+        return
+    songQueue.pop(index-1)
 
 @bot.command()
 async def np(ctx):
@@ -135,9 +157,9 @@ async def np(ctx):
         url = videosDict[currentSong][2]
         answerString += f"[{title}](<{url}>)\n"
     if(answerString == ""):
-        await ctx.reply("not playing anything")
+        await ctx.channel.send("not playing anything")
     else:
-        await ctx.reply(answerString)
+        await ctx.channel.send(answerString)
 
 @bot.command()
 async def kindlygotosleep(ctx):
@@ -157,9 +179,9 @@ async def shuffle(ctx):
     global shuffle
     shuffle = not shuffle
     if(shuffle):
-        await ctx.reply("song shuffling is **on** (not functional yet :yum:)")
+        await ctx.channel.send("song shuffling is **on** (not functional yet :yum:)")
     else:
-        await ctx.reply("song shuffling is **off**")
+        await ctx.channel.send("song shuffling is **off**")
 
 def downloadVideo(url, filename):
     videoID = yt_utils.getID(url)
@@ -167,4 +189,8 @@ def downloadVideo(url, filename):
     fileName = yt_utils.download(url, filename)
     downloadQueue.remove(videoID)
 
+<<<<<<< HEAD
 bot.run("TOKEN")
+=======
+bot.run("")
+>>>>>>> 94650b5 (added remove command)
