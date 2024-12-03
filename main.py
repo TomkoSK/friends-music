@@ -21,8 +21,12 @@ vcClient = False
 shuffleSongs = False
 songStartedAt = 0
 
+paused = False
+pausedAt = 0
+pauseTimeOffset = 0
+
 def playMusic():
-    global songQueue, vcClient, currentSong, songStartedAt
+    global songQueue, vcClient, currentSong, songStartedAt, paused
     while True:
         time.sleep(0.5)
         if(vcClient):
@@ -32,7 +36,8 @@ def playMusic():
                 songQueue = []
                 currentSong = False
                 continue
-            if(vcClient and not vcClient.is_playing() and len(songQueue) > 0):
+            if(vcClient and (not vcClient.is_playing() and not paused) and len(songQueue) > 0):
+                print("PENISSSSS")
                 if(not vcClient.is_connected()):
                     continue
                 if(shuffleSongs):
@@ -42,6 +47,7 @@ def playMusic():
                 if(os.path.isfile(f"./audio/{videosDict[nextSong][0]}.mp3")):
                     vcClient.play(discord.FFmpegPCMAudio(source=f"./audio/{videosDict[nextSong][0]}.mp3"))
                     songStartedAt = time.time()
+                    pauseTimeOffset = 0
                 else:
                     if(nextSong in downloadQueue):
                         continue
@@ -49,7 +55,7 @@ def playMusic():
                         print(f"[ERROR] COULD NOT PLAY SONG {nextSong[1]}")
                 currentSong = nextSong
                 songQueue.remove(nextSong)
-            elif(vcClient and not vcClient.is_playing() and len (songQueue) == 0):
+            elif(vcClient and (not vcClient.is_playing() and not paused) and len (songQueue) == 0):
                 if(not vcClient.is_connected()):
                     continue
                 currentSong = False
@@ -160,14 +166,18 @@ async def remove(ctx, songPlace):
 
 @bot.command()
 async def np(ctx):
-    global currentSong, songQueue
+    global currentSong, songQueue, pausedAt, pauseTimeOffset, paused
     answerString = ""
     if(currentSong):
         answerString += "CURRENT SONG:\n"
         title = videosDict[currentSong][1]
         url = videosDict[currentSong][2]
         length = videosDict[currentSong][3]
-        ongoingTime = int(time.time()-songStartedAt)
+        ongoingTime = time.time()-songStartedAt
+        ongoingTime -= pauseTimeOffset
+        if(paused):
+            ongoingTime -= time.time()-pausedAt
+        ongoingTime = int(ongoingTime)
         if(length > 3600):
             answerString += f"[{title}](<{url}>) `[{time.strftime('%H:%M:%S', time.gmtime(ongoingTime))}/{time.strftime('%H:%M:%S', time.gmtime(length))}`]\n"
         else:
@@ -198,6 +208,22 @@ async def shuffle(ctx):
         await ctx.channel.send("song shuffling is **on**")
     else:
         await ctx.channel.send("song shuffling is **off**")
+
+@bot.command()
+async def pause(ctx):
+    global paused, pausedAt
+    if(vcClient):
+        paused = True
+        pausedAt = time.time()
+        vcClient.pause()
+
+@bot.command()
+async def resume(ctx):
+    global paused, pausedAt, pauseTimeOffset
+    if(vcClient and paused):
+        paused = False
+        vcClient.resume()
+        pauseTimeOffset += time.time() - pausedAt
 
 def downloadVideo(url, filename):
     videoID = yt_utils.getID(url)

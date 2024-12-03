@@ -4,7 +4,7 @@ import random
 from urllib.parse import urlparse, parse_qs
 import pyyoutube
 
-ytClient = pyyoutube.Client(api_key="")
+ytClient = pyyoutube.Client(api_key="AIzaSyAJgzdx8Ix89RoKz7Ek-167LY6SgmeIc9I")
 
 def download(url, filename):
     ydl_opts = {"outtmpl" : f"./audio/{filename}.mp3", "format" : "ba"}
