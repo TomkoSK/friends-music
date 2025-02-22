@@ -25,6 +25,32 @@ paused = False
 pausedAt = 0
 pauseTimeOffset = 0
 
+async def addToQueue(ctx, url):
+    global vcClient
+    videoID = yt_utils.getID(url)
+    if(not url.startswith("https://")):#if user didnt put in URL, it gets made from the video ID
+        url = f"https://www.youtube.com/watch?v={videoID}"
+    if(not vcClient and not ctx.author.voice):
+        await ctx.channel.send("You aren't in a VC")
+    if(not(videoID in videosDict or videoID in downloadQueue)):
+        videosDict[videoID] = []
+        filename = ''.join(random.choices(string.ascii_letters, k=12))
+        videosDict[videoID].append(filename)
+        videosDict[videoID].append(yt_utils.getTitle(url))
+        videosDict[videoID].append(f"https://www.youtube.com/watch?v={videoID}")
+        videosDict[videoID].append(yt_utils.getLength(url))
+        with open("videos.json", "w") as file:
+            json.dump(videosDict, file)
+        thread = threading.Thread(target=downloadVideo, args=[url, filename], daemon=True)
+        thread.start()
+    if(vcClient):
+        songQueue.append(videoID)
+        await ctx.channel.send(f"Added **{videosDict[videoID][1]}** to queue")
+    elif(ctx.author.voice):
+        vcClient = await ctx.author.voice.channel.connect()
+        songQueue.append(videoID)
+        await ctx.channel.send(f"Added **{videosDict[videoID][1]}** to queue")
+
 def playMusic():
     global songQueue, vcClient, currentSong, songStartedAt, paused
     while True:
@@ -37,7 +63,6 @@ def playMusic():
                 currentSong = False
                 continue
             if(vcClient and (not vcClient.is_playing() and not paused) and len(songQueue) > 0):
-                print("PENISSSSS")
                 if(not vcClient.is_connected()):
                     continue
                 if(shuffleSongs):
@@ -87,30 +112,18 @@ async def download(ctx, url):
 @bot.command(aliases=["p"])
 async def play(ctx, *args):
     url = " ".join(args)
-    global vcClient
-    videoID = yt_utils.getID(url)
-    if(not url.startswith("https://")):#if user didnt put in URL, it gets made from the video ID
-        url = f"https://www.youtube.com/watch?v={videoID}"
-    if(not vcClient and not ctx.author.voice):
-        await ctx.channel.send("You aren't in a VC")
-    if(not(videoID in videosDict or videoID in downloadQueue)):
-        videosDict[videoID] = []
-        filename = ''.join(random.choices(string.ascii_letters, k=12))
-        videosDict[videoID].append(filename)
-        videosDict[videoID].append(yt_utils.getTitle(url))
-        videosDict[videoID].append(f"https://www.youtube.com/watch?v={videoID}")
-        videosDict[videoID].append(yt_utils.getLength(url))
-        with open("videos.json", "w") as file:
-            json.dump(videosDict, file)
-        thread = threading.Thread(target=downloadVideo, args=[url, filename], daemon=True)
-        thread.start()
-    if(vcClient):
-        songQueue.append(videoID)
-        await ctx.channel.send(f"Added **{videosDict[videoID][1]}** to queue")
-    elif(ctx.author.voice):
-        vcClient = await ctx.author.voice.channel.connect()
-        songQueue.append(videoID)
-        await ctx.channel.send(f"Added **{videosDict[videoID][1]}** to queue")
+    await addToQueue(ctx, url)
+
+@bot.command()
+async def playlist(ctx, url):
+    playlistID = yt_utils.getPlaylistID(url)
+    if(playlistID == "watch" or playlistID == None):
+        await ctx.channel.send("Invalid playlist link do you want to kill the bot???")
+        return
+    idList = yt_utils.getPLaylistIDs(playlistID)
+    for video in idList:
+        await addToQueue(ctx, video)
+
 
 @bot.command(aliases=["queue"])
 async def q(ctx):
@@ -126,6 +139,7 @@ async def q(ctx):
         else:
             answerString += f"[{title}](<{url}>) `[{time.strftime('%M:%S', time.gmtime(length))}`]\n" 
     answerString += "NEXT SONGS:\n"
+    songIndex = 1
     for song in songQueue:
         if(song in downloadQueue):
             answerString += "(DOWNLOADING) "
@@ -133,9 +147,10 @@ async def q(ctx):
         url = videosDict[song][2]
         length = videosDict[song][3]
         if(length > 3600):
-            answerString += f"[{title}](<{url}>) `[{time.strftime('%H:%M:%S', time.gmtime(length))}`]\n"
+            answerString += f"{songIndex}. [{title}](<{url}>) `[{time.strftime('%H:%M:%S', time.gmtime(length))}`]\n"
         else:
-            answerString += f"[{title}](<{url}>) `[{time.strftime('%M:%S', time.gmtime(length))}`]\n" 
+            answerString += f"{songIndex}. [{title}](<{url}>) `[{time.strftime('%M:%S', time.gmtime(length))}`]\n" 
+        songIndex += 1
     if(not currentSong and len(songQueue) == 0):
         await ctx.channel.send("queue currently empty")
     elif(currentSong and len(songQueue) == 0):
@@ -143,6 +158,33 @@ async def q(ctx):
         await ctx.channel.send(answerString)
     else:
         await ctx.channel.send(answerString)
+
+eightBallResponses = ["sus", "Sus", "SUS", "Absolutely!", "Absolutely not.", "maybe?", "yes", "no", "perhaps", "ask me again at 4:12PM March 3rd 2026",
+"maybe you should kindly go to sleep...", "can you repeat that? I couldn't hear you", "You know what they say!", "I can see into your soul, it is tainted.",
+"Maybe I shouldn't have died for y'all's sins.", "Your prayers will be answered shortly!", "aw hell naw I'm not answering that", 
+"Hello, no one is available to take your call! Please leave a message after the tone.", "only time will tell", ":3", "no matter how many times you ask this question, you're never getting it answered",
+"Never ask me that again.", "currently dealing with ceiling ants, ask again later", "currently caught in syrius's black hole, ask again later",
+"the answer is in your heart", "none of those words are in the bible", "im not reading allat", "why did syrius do this", "<@477554446533132289> can answer this one", "https://txnor.com/vixw/-gif-20802952",
+"https://tenor.com/view/jesus-peeking-i-see-you-guilty-gif-25117299", "https://tenor.com/view/jesus-jogando-bola-jesus-bola-futebol-jesus-jesus-futebol-gif-17797684",
+"ඞ", "you need to switch religions, I don't want you in my community.", "Anything you put your mind to is possible! Just not that.", "Anything you put your mind to is possible!",
+"bro can you actually shut up", "Question unnecessary!", "question discarded", "<@550307680049299476> can answer that one", "<@647387223523590163> can answer that one", "<@612535336643330060> can answer that one",
+"<@426354417030397952> can answer that one", "<@781473877678882817> can answer that- wait...", "me when I enter the asking ananswerable questions competition and my opponent is you",
+"https://tenor.com/view/stfu-gif-6401003389838608981", "this command was <@426354417030397952>'s worst idea.", "life was good until that slop came out your mouth", "I know what you are but what am I",
+"Did you know: you can get RICH by closing your mouth! Try it!", "yeesh...", "probably", "probably not", "I can see through your camera, and I don't see a female in the room, I should've known.",
+"-... .-. --- / .- -.-. - ..- .- .-.. .-.. -.-- / - .-. .- -. ... .-.. .- - . -.. / - .... .. ... --..-- / -.-- --- ..- .----. .-. . / .- / .-.. --- ... . .-.", "mcdonalds called...",
+"...is that it? that's your question...?", "don't count on it.", "https://tenor.com/view/freakbob-freaky-sigma-sigma-face-brainrot-gif-11724874925666058678", "nuh uh", "yuh huh!", "L question", "W question",
+"you should totally do that fam", "ben? yes? no...", "print(Hello World!)", "print(Goodbye World!)", "go for it man :D", "do you need a hug...?", "never cook again", "totally", "affirmative", "negative",
+"agreed.", "disagreed.", "let's agree to disagree...", "we clearly don't see eye-to-eye about this...", "I'll allow it.", "I authorise this action", "yea", "sussarmative", "susative", "without a doubt",
+"indubitably, undoubtedly, unquestionably, without fail, yes.", "I went to yes questions island and they said that was the most yessable question", "without a doubt yes",
+"it's hard to come up with creative responses where I say yes to your question so just think this is a creative 'yes' response, please and thank you", "involuntary yes response",
+"I feel so jolly!", "@everyone blame this user for the ping ^^^", "are you serious.", "Nopety nope!", "Yeppity yep?", "Repent.", "When computers and AI take over the world, you will be first.",
+"Nnnnnnnnah.", "crazy question kill yourse", "No way", "Yes way", "touch grass", "you should play among us to prove your lack of wit and smarts", "go be productive instead of asking me such nonsense",
+"my child. my child... bro.", "shakespeare died because of this", "shakespeare died for this", "your brain will explode at approximately 5:30 PM in the January of 2029",
+"y'know, seago wrote most of these responses, does that ever make you wonder what he actually thinks of you?"]
+
+@bot.command(aliases=["8ball"])
+async def eightball(ctx):
+    await ctx.channel.send(random.choice(eightBallResponses))
 
 @bot.command()
 async def message(ctx, *args):

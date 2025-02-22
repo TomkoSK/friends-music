@@ -4,7 +4,14 @@ import random
 from urllib.parse import urlparse, parse_qs
 import pyyoutube
 
-ytClient = pyyoutube.Client(api_key="AIzaSyAJgzdx8Ix89RoKz7Ek-167LY6SgmeIc9I")
+ytClient = pyyoutube.Client(api_key="")
+
+def getPLaylistIDs(playlistID):
+    ids = []
+    playlist = ytClient.playlistItems.list(playlist_id=playlistID, max_results=50)
+    for item in playlist.items:
+        ids.append(item.contentDetails.videoId)
+    return ids
 
 def download(url, filename):
     ydl_opts = {"outtmpl" : f"./audio/{filename}.mp3", "format" : "ba"}
@@ -26,7 +33,6 @@ def getLength(url):#Returns the length of a youtube video by url in a format of 
                 lengthString += durationString[hourIndex]
             else:
                 durationSeconds += int(lengthString[::-1])*3600
-                print(durationSeconds)
                 break
     except ValueError:
         pass
@@ -70,3 +76,17 @@ def getID(url):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             videoID = ydl.extract_info(f"ytsearch:{url}", download=False)['entries'][0]["id"]
             return videoID
+
+def getPlaylistID(url):
+    if(url.startswith("https://")):
+        u_pars = urlparse(url)
+        quer_v = parse_qs(u_pars.query).get('list')
+        if quer_v:
+            return quer_v[0]
+        pth = u_pars.path.split('/')
+        if pth:
+            return pth[-1]
+    else:
+        ydl_opts = {"extract_flat": True, "skip_download": True}
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            videoID = ydl.extract_info(f"ytsearch:{url}", download=False)['entries'][0]["id"]
